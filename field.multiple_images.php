@@ -1,23 +1,27 @@
-<?php
-
-defined('BASEPATH') or exit('No direct script access allowed');
+<?php defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * Upload Multiple Images Field Type, 
+ * Upload Multiple Images Field Type,
  *
- * @package		PyroCMS\Core\Modules\Streams Core\Field Types
  * @author		Rigo B Castro
- * @copyright           Copyright (c) 2011 - 2013, Rigo B Castro
- * @license		http://parse19.com/pyrostreams/docs/license
+ * @author      Jose Fonseca
+ * @copyright           Copyright (c) 2011 - 2013, We dream pro
  * @link		https://github.com/WeDreamPro/PyroCMS-Multiple-Images-FieldType
  */
+
 class Field_multiple_images {
 
+    public $field_type_name = 'Multiple images';
     public $field_type_slug = 'multiple_images';
+    public $alt_process = true;
     public $db_col_type = false;
-    public $custom_parameters = array('folder', 'table_name', 'resource_id_column', 'file_id_column', 'max_limit_images');
-    public $version = '1.1.0';
-    public $author = array('name' => 'Rigo B Castro', 'url' => 'http://rigobcastro.com');
+    public $custom_parameters = array('folder', 'max_limit_images');
+    public $version = '1.1.1';
+    public $author = array('name' => 'We dream Pro', 'url' => 'http://wedreampro.com');
+
+    private $_table_name = 'default_multiple_images';
+    private $_file_id_column = 'image';
+    private $_resource_id_column = 'streamitem';
 
     // --------------------------------------------------------------------------
 
@@ -28,14 +32,14 @@ class Field_multiple_images {
 
     // --------------------------------------------------------------------------
 
-    public function event($field)
-    {
-        $this->CI->type->add_misc('<link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">');
-        $this->CI->type->add_misc('<script src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/1.0.0/handlebars.min.js"></script>');
+    public function event($field) {
 
-        $this->CI->type->add_css('multiple_images', 'style.css');
-        $this->CI->type->add_js('multiple_images', 'browserplus-min.js');
-        $this->CI->type->add_js('multiple_images', 'plupload.full.js');
+        $this->CI->type->add_misc('<link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">');
+        $this->CI->type->add_css($this->field_type_slug, 'style.css');
+        $this->CI->type->add_js($this->field_type_slug, 'browserplus-min.js');
+        $this->CI->type->add_js($this->field_type_slug, 'plupload.full.js');
+        $this->CI->type->add_js($this->field_type_slug, 'handlebars-v1.1.2.js');
+
     }
 
     /**
@@ -49,7 +53,6 @@ class Field_multiple_images {
     {
         $this->CI->load->library('files/files');
 
-        
         $this->_clean_files($field);
 
         $upload_url = site_url('admin/files/upload');
@@ -58,10 +61,10 @@ class Field_multiple_images {
             'multipart_params' => array(
                 $this->CI->security->get_csrf_token_name() => $this->CI->security->get_csrf_hash(),
                 'folder_id' => $field->field_data['folder'],
-            ),
+                ),
             'upload_url' => $upload_url,
             'is_new' => empty($entry_id)
-        );
+            );
 
         if (!empty($entry_id))
         {
@@ -71,7 +74,7 @@ class Field_multiple_images {
             $this->CI->db->join('files as F', "F.id = {$table_data->table}.{$table_data->file_id_column}");
 
             $images = $this->CI->db->order_by('F.sort', 'ASC')->get_where($table_data->table, array(
-                    $table_data->resource_id_column => $entry_id
+                $table_data->table .'.'. $this->_resource_id_column => $entry_id
                 ))->result();
 
             if (!empty($images))
@@ -84,13 +87,14 @@ class Field_multiple_images {
                         'name' => $image->name,
                         'url' => str_replace('{{ url:site }}', base_url(), $image->path),
                         'is_new' => false
-                    );
+                        );
                 }
 
                 $data['images'] = $images_out;
             }
         }
         $data['field_slug'] = $field->field_slug;
+
         return $this->CI->type->load_view('multiple_images', 'plupload_js', $data);
     }
 
@@ -109,13 +113,14 @@ class Field_multiple_images {
      */
     public function query_build_hook(&$sql, $field, $stream)
     {
-        $sql['select'][] = $this->CI->db->protect_identifiers($stream->stream_prefix . $stream->stream_slug . '.id', true) . "as `" . $field->field_slug . "||{$field->field_data['resource_id_column']}`";
+        $sql['select'][] = $this->CI->db->protect_identifiers($stream->stream_prefix . $stream->stream_slug . '.id', true) . "as `" . $field->field_slug . "||{$this->_resource_id_column}`";
     }
 
     // --------------------------------------------------------------------------
 
     public function pre_save($images, $field, $stream, $row_id, $data_form)
-    {   
+    {
+
         $table_data = $this->_table_data($field);
         $table = $table_data->table;
         $resource_id_column = $table_data->resource_id_column;
@@ -132,47 +137,41 @@ class Field_multiple_images {
 
         if ($this->CI->db->table_exists($table))
         {
-            $this->CI->db->trans_begin();
 
             // Reset
             if ($this->CI->db->delete($table, array($resource_id_column => (int) $row_id)))
             {
-                $count = 1;
+
+
+				$count = 1;
                 // Insert new images
                 foreach ($images as $file_id)
                 {
+
                     $check = !empty($max_limit_images) ? $count <= $max_limit_images : true;
 
                     if ($check)
                     {
                         if (!$this->CI->db->insert($table, array(
-                                $resource_id_column => $row_id,
-                                $file_id_column => $file_id
+                            $resource_id_column => $row_id,
+                            $file_id_column => $file_id
                             )))
                         {
-                            $this->CI->session->set_flashdata('error', 'Error al guardar las nuevas imagenes');
+                            $this->CI->session->set_flashdata('error', 'Error saving new images');
                             return false;
                         }
+
                     }
 
                     $count++;
                 }
             }
 
-            if ($this->CI->db->trans_status() === FALSE)
-            {
-                $this->CI->db->trans_rollback();
-                $this->CI->session->set_flashdata('error', 'Error al guardar las nuevas imagenes');
-                return false;
-            }
-            else
-            {
-                $this->CI->db->trans_commit();
-            }
         }
     }
 
     // --------------------------------------------------------------------------
+
 
     /**
      * Pre Ouput
@@ -183,15 +182,33 @@ class Field_multiple_images {
      * and the id and displaying a link (ie, no joins here).
      *
      * @access	public
-     * @param	array 	$input 	
+     * @param	array 	$input
+     * @return	mixed 	null or string
+     */
+    public function alt_pre_output($row_id, $params, $field_type, $stream)
+    {
+
+
+	}
+
+    /**
+     * Pre Ouput
+     *
+     * Process before outputting on the CP. Since
+     * there is less need for performance on the back end,
+     * this is accomplished via just grabbing the title column
+     * and the id and displaying a link (ie, no joins here).
+     *
+     * @access	public
+     * @param	array 	$input
      * @return	mixed 	null or string
      */
     public function pre_output($input, $data)
     {
-        
+
         if (!$input)
             return null;
-        
+
 
         $stream = $this->CI->streams_m->get_stream($data['choose_stream']);
 
@@ -219,10 +236,10 @@ class Field_multiple_images {
         // -------------------------------------
 
         $row = $this->CI->db
-            ->select()
-            ->where('id', $input)
-            ->get($stream->stream_prefix . $stream->stream_slug)
-            ->row_array();
+        ->select()
+        ->where('id', $input)
+        ->get($stream->stream_prefix . $stream->stream_slug)
+        ->row_array();
 
         if ($this->CI->uri->segment(1) == 'admin')
         {
@@ -245,7 +262,7 @@ class Field_multiple_images {
 
     /**
      * Pre Ouput Plugin
-     * 
+     *
      * This takes the data from the join array
      * and formats it using the row parser.
      *
@@ -263,10 +280,10 @@ class Field_multiple_images {
             $table = "{$custom['stream_slug']}_{$custom['field_slug']}";
         }
 
-        $file_id_column = !empty($custom['field_data']['file_id']) ? $custom['field_data']['file_id'] : 'file_id';
+        $file_id_column = $this->_file_id_column;
 
 
-        $images = $this->CI->db->where($custom['field_data']['resource_id_column'], (int) $row[$custom['field_data']['resource_id_column']])->get($table)->result_array();
+        $images = $this->CI->db->where($this->_resource_id_column, (int) $row[$this->_resource_id_column])->get($table)->result_array();
         $return = array();
         if (!empty($images))
         {
@@ -361,68 +378,6 @@ class Field_multiple_images {
     // --------------------------------------------------------------------------
     // --------------------------------------------------------------------------
 
-    /**
-     * Data for choice. In x : X format or just X format
-     *
-     * @access	public
-     * @param	[string - value]
-     * @return	string
-     */
-    public function param_table_name($value = null)
-    {
-        $tables = get_instance()->db->list_tables();
-        $tables_dropdown = array();
-
-        foreach ($tables as $table)
-        {
-            $prefix = explode('_', $table);
-            if ($prefix[0] !== 'core')
-            {
-                $tables_dropdown[$table] = $table;
-            }
-        }
-
-        return array(
-            'input' => form_dropdown('table_name', $tables_dropdown, $value),
-            'instructions' => $this->CI->lang->line('streams:choice_db.instructions_tablename')
-        );
-    }
-
-    /**
-     * Data for choice. In x : X format or just X format
-     *
-     * @access	public
-     * @param	[string - value]
-     * @return	string
-     */
-    public function param_resource_id_column($value = null)
-    {
-
-        return form_input(array(
-            'name' => 'resource_id_column',
-            'value' => !empty($value) ? $value : 'resource_id',
-            'type' => 'text'
-        ));
-    }
-
-    // --------------------------------------------------------------------------
-
-    /**
-     * Data for choice. In x : X format or just X format
-     *
-     * @access	public
-     * @param	[string - value]
-     * @return	string
-     */
-    public function param_file_id_column($value = null)
-    {
-
-        return form_input(array(
-            'name' => 'file_id_column',
-            'value' => !empty($value) ? $value : 'file_id',
-            'type' => 'text'
-        ));
-    }
 
     /**
      * Data for choice. In x : X format or just X format
@@ -438,7 +393,7 @@ class Field_multiple_images {
             'name' => 'max_limit_images',
             'value' => !empty($value) ? $value : 5,
             'type' => 'text'
-        ));
+            ));
     }
 
     // ----------------------------------------------------------------------
@@ -468,17 +423,17 @@ class Field_multiple_images {
     private function _table_data($field)
     {
         return (object) array(
-                'table' => (!empty($field->field_data['table_name']) ? $field->field_data['table_name'] : "{$field->stream_slug}_{$field->field_slug}"),
-                'resource_id_column' => $field->field_data['resource_id_column'],
-                'file_id_column' => (!empty($field->field_data['file_id_column']) ? $field->field_data['file_id_column'] : 'file_id')
-        );
+            'table' => $this->_table_name,
+            'resource_id_column' => $this->_resource_id_column,
+            'file_id_column' => $this->_file_id_column
+            );
     }
 
     // ----------------------------------------------------------------------
 
     private function _clean_files($field)
     {
-        
+
         $table_data = $this->_table_data($field);
 
         $content = Files::folder_contents($field->field_data['folder']);
@@ -506,5 +461,28 @@ class Field_multiple_images {
         }
     }
 
-    // ----------------------------------------------------------------------
+
+	public function field_assignment_construct($field, $stream) {
+
+		$query = "CREATE TABLE IF NOT EXISTS `".$this->_table_name."` (
+		  `id` int(9) NOT NULL AUTO_INCREMENT,
+		  `created` datetime DEFAULT NULL,
+		  `updated` datetime DEFAULT NULL,
+		  `created_by` int(11) DEFAULT NULL,
+		  `ordering_count` int(11) DEFAULT NULL,
+		  `image` char(60) COLLATE utf8_unicode_ci DEFAULT NULL,
+		  `streamitem` int(11) DEFAULT NULL,
+		  PRIMARY KEY (`id`)
+		) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;";
+
+		$this->CI->db->query($query);
+
+	}
+
+	public function field_assignment_destruct($field, $stream) {
+
+		$this->CI->dbforge->drop_table($this->_table_name);
+
+	}
+
 }

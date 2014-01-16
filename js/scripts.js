@@ -3,7 +3,7 @@ $(function() {
     $("#uploader").pluploadQueue({
         // General settings
         runtimes: 'html5,flash',
-        url: SITE_URL + 'admin/files/upload',
+        url: '/admin/files/upload',
         max_file_size: '10mb',
         chunk_size: '1mb',
         unique_names: true,

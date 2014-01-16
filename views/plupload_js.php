@@ -1,7 +1,3 @@
-
-
-
-
 <div id="upload-container">
     <div id="drop-target">
         <div class="drop-area" style="display: none;">
@@ -18,32 +14,53 @@
 </div>
 <div style="clear: both"></div>
 
-
-
-
 <script id="image-template" type="text/x-handlebars-template">
-    <div id="file-{{id}}" class="thumb {{#unless is_new}} load {{/unless}}">
+    <div id="file-[[id]]" class="thumb">
     <div class="image-preview">
-    
-    {{#if is_new}}
-        <div class="loading-multiple-images loading-multiple-images-spin-medium" style="position:absolute; z-index: 9999; left:40%; top:25%"></div>
-    {{/if}}
-    
-    <a class="image-link" href="{{url}}" rel="multiple_images"><img src="{{url}}" alt="{{name}}" /></a>
-    <input class="images-input" type="hidden" name="<?php echo $field_slug ?>[]" value="{{id}}" />
-    <a class="delete-image" href="#"><i class="icon-remove icon-large"></i></a>   
+
+    <div class="loading-multiple-images loading-multiple-images-spin-medium" style="position:absolute; z-index: 9999; left:40%; top:25%; display: none;"></div>
+
+    <a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" /></a>
+    <input class="images-input" type="hidden" name="<?php echo $field_slug ?>[]" value="[[id]]" />
+    <a class="delete-image" href="#"><i class="icon-remove icon-large"></i></a>
     </div>
     </div>
 </script>
 
-<script>
+<script id="image-template2" type="text/x-handlebars-template">
+    <div id="file-[[id]]" class="thumb [[#is_new]] load [[/is_new]]">
+    <div class="image-preview">
+
+    <?/*[[#is_new]]
+        <div class="loading-multiple-images loading-multiple-images-spin-medium" style="position:absolute; z-index: 9999; left:40%; top:25%"></div>
+    [[/is_new]]*/?>
+
+    <a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" /></a>
+    <input class="images-input" type="hidden" name="<?php echo $field_slug ?>[]" value="[[id]]" />
+    <a class="delete-image" href="#"><i class="icon-remove icon-large"></i></a>
+    </div>
+    </div>
+</script>
+
+<script type="text/javascript">
+	pyro = { 'lang' : {} };
+	var SITE_URL					= "<?php echo rtrim(site_url(), '/').'/';?>";
+	var BASE_URL					= "<?php echo BASE_URL;?>";
+	var BASE_URI					= "<?php echo BASE_URI;?>";
+	var UPLOAD_PATH					= "<?php echo UPLOAD_PATH;?>";
+	var DEFAULT_TITLE				= "<?php echo addslashes($this->settings->site_name); ?>";
+	pyro.base_uri					= "<?php echo BASE_URI; ?>";
+	pyro.lang.remove				= "<?php echo lang('global:remove'); ?>";
+	pyro.lang.dialog_message 		= "<?php echo lang('global:dialog:delete_message'); ?>";
+	pyro.csrf_cookie_name			= "<?php echo config_item('cookie_prefix').config_item('csrf_cookie_name'); ?>";
+
     $(function() {
         var uploader = new plupload.Uploader({
             runtimes: 'gears,html5,flash,silverlight,browserplus',
             browse_button: 'drop-target',
             drop_element: 'drop-target',
             container: 'upload-container',
-            max_file_size: '10mb',
+            max_file_size: '<?= Settings::get('files_upload_limit') ?>mb',
             url: <?= json_encode($upload_url) ?>,
             flash_swf_url: '/plupload/js/plupload.flash.swf',
             silverlight_xap_url: '/plupload/js/plupload.silverlight.xap',
@@ -56,7 +73,6 @@
 
         var nativeFiles = {},
             isHTML5 = false,
-            $image_template = Handlebars.compile($('#image-template').html()),
             $images_list = $('#multiple-images-gallery'),
             entry_is_new = <?= json_encode($is_new) ?>,
             images = <?= json_encode($images) ?>;
@@ -65,8 +81,8 @@
             isHTML5 = uploader.runtime === "html5";
             if (isHTML5) {
                 var inputFile = document.getElementById(uploader.id + '_html5');
-                var oldFunction = inputFile.onchange;
 
+                var oldFunction = inputFile.onchange;
                 inputFile.onchange = function() {
                     nativeFiles = this.files;
                     oldFunction.call(inputFile);
@@ -97,7 +113,6 @@
         });
 
         uploader.bind('Init', function(up, params) {
-            console.log("Current runtime: " + params.runtime);
         });
 
         uploader.init();
@@ -134,7 +149,7 @@
 
             /* Prevent close while upload */
             $(window).on('beforeunload', function() {
-                return 'Hay una subida en progreso...';
+                return 'There is an upload in progress...';
             });
         });
 
@@ -144,9 +159,10 @@
         });
 
         uploader.bind('FileUploaded', function(up, file, info) {
+
             var response = JSON.parse(info.response);
             $file(file.id).addClass('load').find('.images-input').val(response.data.id);
-            $file(file.id).find('.image-link').attr('href', response.data.path.replace("{{ url:site }}", SITE_URL));
+            $file(file.id).find('.image-link').attr('href', response.data.path.replace("{{ url:site }}", '<?=base_url()?>'));
             $file(file.id).find('.loading-multiple-images').remove();
 
             /* Off: Prevent close while upload */
@@ -161,7 +177,7 @@
         }
 
         function add_image(data) {
-            return $images_list.append($image_template(data));
+            return $images_list.append(Mustache.to_html($('#image-template').html(),(data)));
         }
 
         if (entry_is_new === false && images) {
@@ -173,7 +189,7 @@
         /* Events! */
 
         $(document).on('click', '.image-link', function() {
-            $.colorbox({href: this.href, open: true});
+            //$.colorbox({href: this.href, open: true});
             return false;
         });
 
@@ -181,7 +197,6 @@
             var $this = $(this),
                 file_id = $this.parent().find('input.images-input').val();
 
-            if (confirm(pyro.lang.dialog_message)) {
                 $.post(SITE_URL + 'admin/files/delete_file', {file_id: file_id}, function(json) {
                     if (json.status === true) {
                         $this.parents('.thumb').fadeOut(function() {
@@ -191,11 +206,12 @@
                         alert(json.message);
                     }
                 }, 'json');
-            }
+
 
             return e.preventDefault();
         });
 
+/*
         $("#multiple-images-gallery").sortable({
             cursor: 'move',
             placeholder: "sortable-placeholder",
@@ -214,5 +230,6 @@
                 }, 'json');
             }
         }).disableSelection();
+*/
     });
 </script>
