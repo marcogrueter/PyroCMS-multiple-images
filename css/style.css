@@ -53,12 +53,9 @@
   border: 1px solid rgba(0, 0, 0, 0.2);
   padding: 2px;
 }
-#multiple-images-gallery .thumb:nth-child(3n+1) {
-  margin-left: 0;
-}
 #multiple-images-gallery .thumb .image-preview {
-  width: 350px;
-  height: 200px;
+  width: 100px;
+  height: auto;
   overflow: hidden;
   position: relative;
   display: block;

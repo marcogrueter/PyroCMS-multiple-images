@@ -32,9 +32,14 @@ class Field_multiple_images {
 
     // --------------------------------------------------------------------------
 
+	public function __construct() {
+		$this->CI =& get_instance();
+	}
+
     public function event($field) {
 
         $this->CI->type->add_misc('<link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">');
+        
         $this->CI->type->add_css($this->field_type_slug, 'style.css');
         $this->CI->type->add_js($this->field_type_slug, 'browserplus-min.js');
         $this->CI->type->add_js($this->field_type_slug, 'plupload.full.js');
