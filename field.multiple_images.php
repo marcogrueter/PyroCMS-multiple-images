@@ -17,7 +17,7 @@ class Field_multiple_images {
     public $db_col_type = false;
     public $custom_parameters = array('folder', 'max_limit_images');
     public $version = '1.1.1';
-    public $author = array('name' => 'We dream Pro', 'url' => 'http://wedreampro.com');
+    public $author = array('name' => 'Ben Rogmans', 'url' => 'http://rogmansmedia.nl');
 
     private $_table_name = 'default_multiple_images';
     private $_file_id_column = 'image';
