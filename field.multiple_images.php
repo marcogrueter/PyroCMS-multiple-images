@@ -4,9 +4,9 @@
  * Upload Multiple Images Field Type,
  *
  * @author		Rigo B Castro
- * @author      Jose Fonseca
- * @copyright           Copyright (c) 2011 - 2013, We dream pro
- * @link		https://github.com/WeDreamPro/PyroCMS-Multiple-Images-FieldType
+ * @author      	Jose Fonseca
+ * @author		Ben Rogmans
+ * @link		https://github.com/benrogmans/PyroCMS-multiple-images
  */
 
 class Field_multiple_images {
