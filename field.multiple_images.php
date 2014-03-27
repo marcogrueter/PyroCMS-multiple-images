@@ -34,6 +34,7 @@ class Field_multiple_images {
 
 	public function __construct() {
 		$this->CI =& get_instance();
+		
 	}
 
     public function event($field) {
@@ -55,12 +56,13 @@ class Field_multiple_images {
      * @return	string
      */
     public function form_output($data, $entry_id, $field)
-    {
+    {	
+
         $this->CI->load->library('files/files');
 
         $this->_clean_files($field);
 
-        $upload_url = site_url('admin/files/upload');
+        $upload_url = site_url('kamers/bestanden/upload');
 
         $data = array(
             'multipart_params' => array(
@@ -68,7 +70,8 @@ class Field_multiple_images {
                 'folder_id' => $field->field_data['folder'],
                 ),
             'upload_url' => $upload_url,
-            'is_new' => empty($entry_id)
+            'is_new' => empty($entry_id),
+            'max_files' => $field->field_data['max_limit_images']
             );
 
         if (!empty($entry_id))
@@ -210,7 +213,6 @@ class Field_multiple_images {
      */
     public function pre_output($input, $data)
     {
-
         if (!$input)
             return null;
 
@@ -278,6 +280,7 @@ class Field_multiple_images {
      */
     public function pre_output_plugin($row, $custom)
     {
+
         $table = $custom['field_data']['table_name'];
 
         if (empty($table))
@@ -339,6 +342,9 @@ class Field_multiple_images {
                 $return[] = $image_data;
             }
         }
+        
+        
+        
         return $return;
     }
 

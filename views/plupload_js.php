@@ -10,21 +10,23 @@
     </div>
 </div>
 
-<div id="multiple-images-gallery">
+<div id="multiple-images-gallery" class="row">
 </div>
 <div style="clear: both"></div>
 
 <script id="image-template" type="text/x-handlebars-template">
-    <div id="file-[[id]]" class="thumb">
-    <div class="image-preview">
-
-    <div class="loading-multiple-images loading-multiple-images-spin-medium" style="position:absolute; z-index: 9999; left:40%; top:25%; display: none;"></div>
-
-    <a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" /></a>
-    <input class="images-input" type="hidden" name="<?php echo $field_slug ?>[]" value="[[id]]" />
-    <a class="delete-image" href="#"><i class="icon-remove icon-large"></i></a>
+	
+    <div id="file-[[id]]" class="thumb col-sm-2">
+	    <div class="image-preview">
+	
+		    <div class="loading-multiple-images loading-multiple-images-spin-medium" style="position:absolute; z-index: 9999; left:40%; top:25%; display: none;"></div>
+		
+		    <a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" style="width: 100%;" /></a>
+		    <input class="images-input" type="hidden" name="<?php echo $field_slug ?>[]" value="[[id]]" />
+		    <a class="delete-image" href="#"><i class="icon-remove icon-large"></i></a>
+	    </div>
     </div>
-    </div>
+
 </script>
 
 <script id="image-template2" type="text/x-handlebars-template">
@@ -61,21 +63,22 @@
             drop_element: 'drop-target',
             container: 'upload-container',
             max_file_size: '<?= Settings::get('files_upload_limit') ?>mb',
-            url: <?= json_encode($upload_url) ?>,
+            max_file_count: '<?php echo $max_files;?>',
+            url: <?php echo json_encode($upload_url); ?>,
             flash_swf_url: '/plupload/js/plupload.flash.swf',
             silverlight_xap_url: '/plupload/js/plupload.silverlight.xap',
             filters: [
                 {title: "Image files", extensions: "jpg,gif,png,jpeg,tiff"}
             ],
             resize: {quality: 90},
-            multipart_params: <?= json_encode($multipart_params) ?>
+            multipart_params: <?php echo json_encode($multipart_params); ?>
         });
-
+		
         var nativeFiles = {},
             isHTML5 = false,
             $images_list = $('#multiple-images-gallery'),
-            entry_is_new = <?= json_encode($is_new) ?>,
-            images = <?= json_encode($images) ?>;
+            entry_is_new = <?php echo json_encode($is_new); ?>,
+            images = <?php echo json_encode($images); ?>;
 
         uploader.bind('PostInit', function() {
             isHTML5 = uploader.runtime === "html5";
@@ -159,12 +162,15 @@
         });
 
         uploader.bind('FileUploaded', function(up, file, info) {
-
+			console.log(info.response);
             var response = JSON.parse(info.response);
-            $file(file.id).addClass('load').find('.images-input').val(response.data.id);
-            $file(file.id).find('.image-link').attr('href', response.data.path.replace("{{ url:site }}", '<?=base_url()?>'));
-            $file(file.id).find('.loading-multiple-images').remove();
-
+            
+            if(response.status == true) {
+	            $file(file.id).addClass('load').find('.images-input').val(response.data.id);
+	            $file(file.id).find('.image-link').attr('href', response.data.path.replace("{{ url:site }}", '<?=base_url()?>'));
+	            $file(file.id).find('.loading-multiple-images').remove();
+			}
+			
             /* Off: Prevent close while upload */
             $(window).off('beforeunload');
         });
@@ -196,17 +202,10 @@
         $(document).on('click', '.delete-image', function(e) {
             var $this = $(this),
                 file_id = $this.parent().find('input.images-input').val();
-
-                $.post(SITE_URL + 'admin/files/delete_file', {file_id: file_id}, function(json) {
-                    if (json.status === true) {
-                        $this.parents('.thumb').fadeOut(function() {
-                            return $(this).remove();
-                        });
-                    } else {
-                        alert(json.message);
-                    }
-                }, 'json');
-
+				
+				$this.parents('.thumb').fadeOut(function() {
+                    return $(this).remove();
+                });
 
             return e.preventDefault();
         });

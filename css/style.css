@@ -47,14 +47,12 @@
   display: block;
 }
 #multiple-images-gallery .thumb {
-  float: left;
-  display: inline-block;
   margin: 0 0 1.2em 1em;
   border: 1px solid rgba(0, 0, 0, 0.2);
   padding: 2px;
 }
 #multiple-images-gallery .thumb .image-preview {
-  width: 100px;
+  width: 100%;
   height: auto;
   overflow: hidden;
   position: relative;
