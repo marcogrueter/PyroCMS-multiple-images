@@ -11,19 +11,20 @@
 </div>
 
 <div id="multiple-images-gallery" class="row">
+
 </div>
 <div style="clear: both"></div>
 
 <script id="image-template" type="text/x-handlebars-template">
 	
-    <div id="file-[[id]]" class="thumb col-sm-2">
+    <div id="file-[[id]]" class="col-sm-2 thumb" style="padding: 0px 10px 0 0;">
 	    <div class="image-preview">
 	
 		    <div class="loading-multiple-images loading-multiple-images-spin-medium" style="position:absolute; z-index: 9999; left:40%; top:25%; display: none;"></div>
 		
-		    <a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" style="width: 100%;" /></a>
+		    <a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" class="" style="margin: 0px; width: 100%; opacity: 0.1;" /></a>
 		    <input class="images-input" type="hidden" name="<?php echo $field_slug ?>[]" value="[[id]]" />
-		    <a class="delete-image" href="#"><i class="icon-remove icon-large"></i></a>
+		    <a class="delete-image" href="#"><i class="icon-remove icon"></i></a>
 	    </div>
     </div>
 
@@ -31,16 +32,19 @@
 
 <script id="image-template2" type="text/x-handlebars-template">
     <div id="file-[[id]]" class="thumb [[#is_new]] load [[/is_new]]">
-    <div class="image-preview">
-
-    <?/*[[#is_new]]
-        <div class="loading-multiple-images loading-multiple-images-spin-medium" style="position:absolute; z-index: 9999; left:40%; top:25%"></div>
-    [[/is_new]]*/?>
-
-    <a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" /></a>
-    <input class="images-input" type="hidden" name="<?php echo $field_slug ?>[]" value="[[id]]" />
-    <a class="delete-image" href="#"><i class="icon-remove icon-large"></i></a>
-    </div>
+	    <div class="image-preview">
+	
+		    <?/*[[#is_new]]
+		        <div class="loading-multiple-images loading-multiple-images-spin-medium" style="position:absolute; z-index: 9999; left:40%; top:25%"></div>
+		    [[/is_new]]*/?>
+			
+			<div class="row-fluid">
+		    	<a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" class="span2" style="opacity:0.0;" /></a>
+			</div>
+			<span></span>
+		    <input class="images-input" type="hidden" name="<?php echo $field_slug ?>[]" value="[[id]]" />
+		    <a class="delete-image" href="#"><i class="fa fa-remove"></i></a>
+	    </div>
     </div>
 </script>
 
@@ -63,7 +67,7 @@
             drop_element: 'drop-target',
             container: 'upload-container',
             max_file_size: '<?= Settings::get('files_upload_limit') ?>mb',
-            max_file_count: '<?php echo $max_files;?>',
+            max_file_count: <?php echo $max_files;?>,
             url: <?php echo json_encode($upload_url); ?>,
             flash_swf_url: '/plupload/js/plupload.flash.swf',
             silverlight_xap_url: '/plupload/js/plupload.silverlight.xap',
@@ -146,18 +150,18 @@
 
             up.refresh();
         });
-
+		
         uploader.bind('UploadProgress', function(up, file) {
             $file(file.id).find('img').css({opacity: file.percent / 100});
-
+			$file(file.id).find('span').html(file.percent + "%");
             /* Prevent close while upload */
             $(window).on('beforeunload', function() {
-                return 'There is an upload in progress...';
+                return 'Er worden nog bestanden geupload...';
             });
         });
 
         uploader.bind('Error', function(up, error) {
-            pyro.add_notification('<div class="alert error"><p><?= lang('streams:multiple_images.adding_error') ?></p></div>');
+            alert('<?= lang('streams:multiple_images.adding_error') ?>');
             up.refresh();
         });
 
