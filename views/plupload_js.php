@@ -17,12 +17,12 @@
 
 <script id="image-template" type="text/x-handlebars-template">
 	
-    <div id="file-[[id]]" class="col-sm-2 thumb" style="padding: 0px 10px 0 0;">
+    <div id="file-[[id]]" class="col-sm-2 thumb" style="padding: 0; margin: 0 0 0 0;">
 	    <div class="image-preview">
 	
 		    <div class="loading-multiple-images loading-multiple-images-spin-medium" style="position:absolute; z-index: 9999; left:40%; top:25%; display: none;"></div>
 		
-		    <a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" class="" style="margin: 0px; width: 100%; opacity: 0.1;" /></a>
+		    <a class="image-link" href="[[url]]" rel="multiple_images"><img src="[[url]]" alt="[[name]]" class="" style="margin: 0px; width: 100%; [[#is_new]] opacity: 0.1; [[/is_new]]" /></a>
 		    <input class="images-input" type="hidden" name="<?php echo $field_slug ?>[]" value="[[id]]" />
 		    <a class="delete-image" href="#"><i class="icon-remove icon"></i></a>
 	    </div>
@@ -61,6 +61,8 @@
 	pyro.csrf_cookie_name			= "<?php echo config_item('cookie_prefix').config_item('csrf_cookie_name'); ?>";
 
     $(function() {
+    	var file_count = <?php echo ($images)?count($images):0;?>;
+    	var upload_extra_error = false;
         var uploader = new plupload.Uploader({
             runtimes: 'gears,html5,flash,silverlight,browserplus',
             browse_button: 'drop-target',
@@ -123,37 +125,71 @@
         });
 
         uploader.init();
-
+		console.log(file_count);
+		console.log(uploader.settings.max_file_count);
         uploader.bind('FilesAdded', function(up, files) {
+			
+			
+			if(file_count <= uploader.settings.max_file_count && upload_extra_error == false) {
+			
+	            $.each(files, function(i, file) {
+					file_count++;
+					
+					if(file_count <= uploader.settings.max_file_count && upload_extra_error == false) {
+						
+						console.log(file_count);
+						
+		                if (isHTML5) {
+		                    var reader = new FileReader();
+		
+		                    reader.onload = (function(file, id) {
+		                        return function(e) {
+		                            return add_image({
+		                                id: id,
+		                                url: e.target.result,
+		                                is_new: true
+		                            });
+		                        };
+		                    })(nativeFiles[i], file.id);
+		
+		                    reader.readAsDataURL(nativeFiles[i]);
+		                } else {
+		                    $('#filelist').append('<div id="' + file.id + '">' + file.name + ' (' + plupload.formatSize(file.size) + ') <b></b>' + '</div>');
+		                }
+						
+					}else{
+						file_count--;
+						console.log(file_count);
+						upload_extra_error = true;
 
-            $.each(files, function(i, file) {
-                if (isHTML5) {
-                    var reader = new FileReader();
+						if($('.upload-warning').length == false){
+							$('#upload-container').before('<div class="alert alert-warning upload-warning">Je mag maximaal '+uploader.settings.max_file_count+' foto\'s toevoegen.</div>');
+							$('.upload-warning').delay(6000).fadeOut(100);
+							setTimeout(function() {
+							    $('.upload-warning').remove();
+							}, 6100);
+						}		
 
-                    reader.onload = (function(file, id) {
-                        return function(e) {
-                            return add_image({
-                                id: id,
-                                url: e.target.result,
-                                is_new: true
-                            });
-                        };
-                    })(nativeFiles[i], file.id);
-
-                    reader.readAsDataURL(nativeFiles[i]);
-                } else {
-                    $('#filelist').append('<div id="' + file.id + '">' + file.name + ' (' + plupload.formatSize(file.size) + ') <b></b>' + '</div>');
-                }
-            });
-
-            uploader.start();
-
-            up.refresh();
+	                }
+	            });
+				
+				if(file_count <= uploader.settings.max_file_count || upload_extra_error == false) {
+		            uploader.start();
+		            up.refresh();
+	            }
+            }else{
+	            if($('.upload-warning').length == false){
+					$('#upload-container').before('<div class="alert alert-warning upload-warning">Je mag maximaal '+uploader.settings.max_file_count+' foto\'s toevoegen.</div>');
+					$('.upload-warning').delay(6000).fadeOut(100);
+					setTimeout(function() {
+					    $('.upload-warning').remove();
+					}, 6100);
+				}
+            }
         });
 		
         uploader.bind('UploadProgress', function(up, file) {
             $file(file.id).find('img').css({opacity: file.percent / 100});
-			$file(file.id).find('span').html(file.percent + "%");
             /* Prevent close while upload */
             $(window).on('beforeunload', function() {
                 return 'Er worden nog bestanden geupload...';
@@ -167,7 +203,13 @@
 
         uploader.bind('FileUploaded', function(up, file, info) {
 			console.log(info.response);
-            var response = JSON.parse(info.response);
+
+            if(response == false){ 
+	            file_count--;
+            	console.log(file_count);
+            }else{
+	            var response = JSON.parse(info.response);
+            }
             
             if(response.status == true) {
 	            $file(file.id).addClass('load').find('.images-input').val(response.data.id);
@@ -208,6 +250,9 @@
                 file_id = $this.parent().find('input.images-input').val();
 				
 				$this.parents('.thumb').fadeOut(function() {
+					file_count--;
+					upload_extra_error = false;
+					console.log(file_count);
                     return $(this).remove();
                 });
 
