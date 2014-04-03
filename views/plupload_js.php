@@ -68,6 +68,7 @@
             browse_button: 'drop-target',
             drop_element: 'drop-target',
             container: 'upload-container',
+            max_retries: 10,
             max_file_size: '<?= Settings::get('files_upload_limit') ?>mb',
             max_file_count: <?php echo $max_files;?>,
             url: <?php echo json_encode($upload_url); ?>,
@@ -77,6 +78,7 @@
                 {title: "Image files", extensions: "jpg,gif,png,jpeg,tiff"}
             ],
             resize: {quality: 90},
+            multipart: true,
             multipart_params: <?php echo json_encode($multipart_params); ?>
         });
 		
@@ -200,23 +202,27 @@
             alert('<?= lang('streams:multiple_images.adding_error') ?>');
             up.refresh();
         });
-
+		
+		uploader.bind('BeforeUpload', function(up, file, info) {
+			
+			
+		});
+		
         uploader.bind('FileUploaded', function(up, file, info) {
 			console.log(info.response);
-
-            if(response == false){ 
+			console.log(up);
+            if(info.response == false){ 
 	            file_count--;
             	console.log(file_count);
             }else{
 	            var response = JSON.parse(info.response);
+				if(response.status == true) {
+		            $file(file.id).addClass('load').find('.images-input').val(response.data.id);
+		            $file(file.id).find('.image-link').attr('href', response.data.path.replace("{{ url:site }}", '<?=base_url()?>'));
+		            $file(file.id).find('.loading-multiple-images').remove();
+				}
             }
-            
-            if(response.status == true) {
-	            $file(file.id).addClass('load').find('.images-input').val(response.data.id);
-	            $file(file.id).find('.image-link').attr('href', response.data.path.replace("{{ url:site }}", '<?=base_url()?>'));
-	            $file(file.id).find('.loading-multiple-images').remove();
-			}
-			
+
             /* Off: Prevent close while upload */
             $(window).off('beforeunload');
         });
