@@ -60,6 +60,9 @@ class Field_multiple_images {
 		{
 			$result = Files::upload($input['folder_id'], $input['name'], 'file', $input['width'], $input['height'], $input['ratio'], null, $input['alt_attribute']);
 			$result['status'] AND Events::trigger('file_uploaded', $result['data']);
+		}else{
+			$result['status'] = 'error';
+			$result['message'] = 'Upload Error';
 		}
 
 		echo json_encode($result);	

@@ -49,6 +49,7 @@ var uploader = new plupload.Uploader({
         ]
     },
     resize: {quality: 90},
+    max_retries: 10,
     multipart: true,
     multipart_params: <?php echo json_encode($multipart_params); ?>,
     // Flash settings
@@ -91,7 +92,7 @@ var uploader = new plupload.Uploader({
 		},
 		
         FilesAdded: function(up, files) {
- 
+			
 			$.each(files, function(i, file) {
 				if(file_count < max_files){
 					add_image_pre({id: file.id, name: file.name});
@@ -117,20 +118,34 @@ var uploader = new plupload.Uploader({
           
         },
         
-        FileUploaded: function(up, file, info) {
+        ChunkUploaded: function (up, file, response) {
+                response = $.parseJSON(response.response);
+                if (response.status == 'error') {
+                    up.stop();
+                    up.start();
+                } 
 
+		},
+        
+        FileUploaded: function(up, file, info) {
+        
             if(info.response == false){ 
             	$('#file-'+file.id).remove();
             	file_count--;
             }else{
 	            var response = JSON.parse(info.response);
-				if(response.status == true) {
+				if(response && response.status == true) {
 					var path = response.data.path.replace("\{\{ url:site \}\}", "<?=base_url()?>");
 					path = path.replace('large/', 'thumb/')+'/600/430/fit';
 					add_image(file.id, {url: path, id: response.data.id, name: response.data.name});
 				}else{
-					$('#file-'+file.id).remove();
-					file_count--;
+					alert('FOUT!'+response);
+					//$('#file-'+file.id).remove();
+					
+				    file.status = uploader.UPLOADING;
+				    up.state = plupload.STARTED;
+				    up.trigger("StateChanged");
+				    up.trigger('UploadFile', file);
 				}
             }
         },
@@ -145,7 +160,8 @@ var uploader = new plupload.Uploader({
             //disable next btn
         },
         Error: function(up, err) {
-        	console.log(file_count);
+        	up.stop();
+        	up.start();        	
         	$('#upload-container').before('<div class="alert alert-warning upload-warning2">'+err.message+'</div>');
 			$('.upload-warning2').delay(6000).fadeOut(100);
 			setTimeout(function() {
