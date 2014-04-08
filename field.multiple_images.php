@@ -17,7 +17,7 @@ class Field_multiple_images {
     public $db_col_type = false;
     public $custom_parameters = array('folder', 'max_limit_images');
     public $version = '1.1.1';
-    public $author = array('name' => 'Ben Rogmans', 'url' => 'http://rogmansmedia.nl');
+    public $author = array('name' => 'Ben Rogmans/Gijs-Jan Roof', 'url' => 'http://rogmansmedia.nl');
 
     private $_table_name = 'default_multiple_images';
     private $_file_id_column = 'image';
@@ -38,14 +38,31 @@ class Field_multiple_images {
 	}
 
     public function event($field) {
+		
+    }
+    
+    public function ajax_upload() {
+	    //streams_core/public_ajax/field/multiple_images/upload
 
-        $this->CI->type->add_misc('<link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">');
-        
-        $this->CI->type->add_css($this->field_type_slug, 'style.css');
-        $this->CI->type->add_js($this->field_type_slug, 'browserplus-min.js');
-        $this->CI->type->add_js($this->field_type_slug, 'plupload.full.js');
-        $this->CI->type->add_js($this->field_type_slug, 'handlebars-v1.1.2.js');
+		$this->CI->load->library('files/files');
 
+		$allowed_extensions = 'jpg|png';
+	    
+	    $result = null;
+		$input = $this->CI->input->post();
+
+		if($input['replace_id'] > 0)
+		{
+			$result = Files::replace_file($input['replace_id'], $input['folder_id'], $input['name'], 'file', $input['width'], $input['height'], $input['ratio'], $input['alt_attribute']);
+			$result['status'] AND Events::trigger('file_replaced', $result['data']);
+		}
+		elseif ($input['folder_id'] and $input['name'])
+		{
+			$result = Files::upload($input['folder_id'], $input['name'], 'file', $input['width'], $input['height'], $input['ratio'], null, $input['alt_attribute']);
+			$result['status'] AND Events::trigger('file_uploaded', $result['data']);
+		}
+
+		echo json_encode($result);	
     }
 
     /**
@@ -62,7 +79,7 @@ class Field_multiple_images {
 
         $this->_clean_files($field);
 
-        $upload_url = site_url('kamers/bestanden/upload');
+        $upload_url = site_url('streams_core/public_ajax/field/multiple_images/upload');
 
         $data = array(
             'multipart_params' => array(
